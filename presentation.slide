@@ -73,45 +73,8 @@ As well opening up features like middleware and more advanced route features.
 
 * Middleware
 Middleware is a function that has access to the request and response as well as a control flow callback.
-
-    func Timeout(timeout time.Duration) func(next http.Handler) http.Handler {
-    	return func(next http.Handler) http.Handler {
-    		fn := func(w http.ResponseWriter, r *http.Request) {
-    			ctx, cancel := context.WithTimeout(r.Context(), timeout)
-    			defer func() {
-    				cancel()
-    				if ctx.Err() == context.DeadlineExceeded {
-    					w.WriteHeader(http.StatusGatewayTimeout)
-    				}
-    			}()
-    
-    			r = r.WithContext(ctx)
-    			next.ServeHTTP(w, r)
-    		}
-    		return http.HandlerFunc(fn)
-    	}
-    }
-    
-Example adding a timeout to all incoming requests 
-
-* Handler implementation of the middleware
-
-Here is how that would be implemented in the handler
-
-    r.Get("/long", func(w http.ResponseWriter, r *http.Request) {
-    		ctx := r.Context()
-    		processTime := time.Duration(rand.Intn(4)+1) * time.Second
-    
-    		select {
-    		case <-ctx.Done():
-    			return
-    
-    		case <-time.After(processTime):
-    			// The above channel simulates some hard work.
-    		}
-    
-    		w.Write([]byte("done"))
-    })
+.code chi-middleware.go /START OMIT/,/END OMIT/    
+Here is an example middleware that forces all requests to be authenticated. 
     
 * Advanced Routes
 An example of route parameters.
@@ -123,4 +86,88 @@ Here we pull the book name from the route and return it.
 Say we wanted to return more data about the book in JSON format how would we do that?
 
 * Working with JSON
+Here we write back a JSON response containing a book title and author.
 .code chi-basic-json.go /START OMIT/,/END OMIT/
+
+* REST What is it?
+REST is an architectural style, or design pattern, for APIs.
+
+There are 6 parts to REST APIs
+
+- Client-Server (ex. frontend-backend)
+- Stateless (each request must have all the information can't rely on server state)
+- Cacheable (the response says if something is cacheable or not)
+- Uniform Interface (resources, and resource methods)
+- Layered System (limit resource view to the immediate layer)
+- Code on demand (optional. client can download new functionality in the form of scripts)
+
+* Richardson Maturity Model
+
+* What is it?
+
+A way of determining how RESTful your webservice is.
+
+There are 4 levels 0-3
+
+* 0 - The Swamp Of POX
+APIs at this level are not at all RESTful and this is where SOAP based services take place.
+
+    http://<hostname>:port/twitter
+
+.image images/0-pox.jpg
+
+* 1 - Resource based Address/URI
+This is where we break the single URL into multiple paths
+
+    ~/twitter
+    
+Becomes
+
+    ~/tweets
+    ~/tweets/{tweetID}/comments
+    ~/tweets/{tweetID}/followers
+    
+* 2 - Utilize HTTP as Application Layer Protocol
+This is where we start utilizing standard HTTP methods/verbs and different status codes to do different operations.
+
+Example
+
+    DELETE ~/tweets/{tweetID} -> 204 No Content
+    DELETE ~/tweets/{tweetID}/comments/{commentID} -> 204 No Content
+    POST ~/tweets -> 201 Created
+    
+* 3 - Use Hypermedia or HATEOAS
+Here we start providing additional details in the responses like the URI to get further information
+on a resource or how to perform an operation on it
+
+.image images/3-hateoas.png
+
+* Github API Example
+Here is a ~/search/commits example
+
+          "committer": {
+            "login": "octocat",
+            "id": 583231,
+            "node_id": "MDQ6VXNlcjU4MzIzMQ==",
+            "avatar_url": "https://avatars.githubusercontent.com/u/583231?v=3",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/octocat",
+            "html_url": "https://github.com/octocat",
+            "followers_url": "https://api.github.com/users/octocat/followers",
+            "following_url": "https://api.github.com/users/octocat/following{/other_user}",
+            "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
+            "organizations_url": "https://api.github.com/users/octocat/orgs",
+            "repos_url": "https://api.github.com/users/octocat/repos",
+            "events_url": "https://api.github.com/users/octocat/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/octocat/received_events",
+            "type": "User",
+            "site_admin": false
+          },
+
+* Resources to further explore
+Richardson Maturity Model
+.link https://developers.redhat.com/blog/2017/09/13/know-how-restful-your-api-is-an-overview-of-the-richardson-maturity-model/
+REST in detail
+.link https://www.codecademy.com/articles/what-is-rest
