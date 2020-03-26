@@ -1,0 +1,126 @@
+HTTP Servers in Go
+
+Derrick Laird
+Nozzle
+@mordfustang50
+
+* Agenda
+
+Go over building and testing http web services and show a few nice 
+design patterns
+
+- What is HTTP
+- Basic HTTP server
+- More advanced routing
+- Websockets
+- Testing
+
+* What is HTTP
+Hypertext Transfer Protocol (HTTP) is an application-layer protocol for transmitting hypermedia documents, such as HTML. It was designed for communication between web browsers and web servers, but it can also be used for other purposes.
+
+Here is an example of an HTTP message
+.image images/http-message-format.png
+
+
+* A basic HTTP Server
+Here is an example of a basic http server that does nothing.
+.code http-basic.go
+
+* Lets add some basic routing
+Here we register a handler function by passing a path and anonymous function to call
+when a request is made to the path.
+.code http-basic-with-handler.go /START OMIT/,/END OMIT/
+
+This works by registering an handler on the default ServeMux in the http package.
+
+.code http-basic-with-handler.go /SERV_START OMIT/,/SERV_END OMIT/
+
+Notice there is no method defined here. By default the handler will be called
+for all methods at this path. How do we fix that?
+
+* Implementing method matching
+Here we implement some method matching for our handler.
+.code http-handler-method-match.go /START OMIT/,/END OMIT/
+Here we limit the handler to only write back a response on a GET request and return
+an error on all other methods.
+
+If we want to avoid this type of boiler plate code we will have to switch to a
+custom router.
+
+* Custom Routers
+In our previous examples we've always passed a nil handler to the ListenAndServe call which uses the default ServeMux.
+We can change that with anything that implements this interface.
+
+        type Handler interface {
+        	ServeHTTP(ResponseWriter, *Request)
+        }
+        
+All incoming requests will now go through this single ServeHTTP function making it now
+up to the implementation to determine how routing works.
+
+It is also up to them to determine how route registration is handled.
+
+* Implementing Chi
+Here is an example of implementing *github.com/go-chi/chi* which is a light weight
+performant router used by companies like cloudflare and heroku.
+.code http-custom-router.go /START OMIT/,/END OMIT/
+
+Now we have various route registration methods like
+
+    Get, Put, Post, Delete
+    
+As well opening up features like middleware and more advanced route features.
+
+* Middleware
+Middleware is a function that has access to the request and response as well as a control flow callback.
+
+    func Timeout(timeout time.Duration) func(next http.Handler) http.Handler {
+    	return func(next http.Handler) http.Handler {
+    		fn := func(w http.ResponseWriter, r *http.Request) {
+    			ctx, cancel := context.WithTimeout(r.Context(), timeout)
+    			defer func() {
+    				cancel()
+    				if ctx.Err() == context.DeadlineExceeded {
+    					w.WriteHeader(http.StatusGatewayTimeout)
+    				}
+    			}()
+    
+    			r = r.WithContext(ctx)
+    			next.ServeHTTP(w, r)
+    		}
+    		return http.HandlerFunc(fn)
+    	}
+    }
+    
+Example adding a timeout to all incoming requests 
+
+* Handler implementation of the middleware
+
+Here is how that would be implemented in the handler
+
+    r.Get("/long", func(w http.ResponseWriter, r *http.Request) {
+    		ctx := r.Context()
+    		processTime := time.Duration(rand.Intn(4)+1) * time.Second
+    
+    		select {
+    		case <-ctx.Done():
+    			return
+    
+    		case <-time.After(processTime):
+    			// The above channel simulates some hard work.
+    		}
+    
+    		w.Write([]byte("done"))
+    })
+    
+* Advanced Routes
+An example of route parameters.
+
+.code chi-route-parameters.go /START OMIT/,/END OMIT/
+
+Here we pull the book name from the route and return it.
+
+Say we wanted to return more data about the book in JSON format how would we do that?
+
+* Working with JSON
+.code chi-basic-json.go /START OMIT/,/END OMIT/
