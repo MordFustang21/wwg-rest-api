@@ -33,6 +33,10 @@ func run() error {
 	})
 	// END OMIT
 
+	r.Get("/hello", func(writer http.ResponseWriter, request *http.Request) {
+		writer.Write([]byte("world"))
+	})
+
 	// SERV_START OMIT
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		return err

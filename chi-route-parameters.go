@@ -18,7 +18,7 @@ func main() {
 func run() error {
 	r := chi.NewRouter()
 	// START OMIT
-	r.Get("/book/{name}", func(writer http.ResponseWriter, request *http.Request) {
+	r.Get("/books/{name}", func(writer http.ResponseWriter, request *http.Request) {
 		bookName := chi.URLParam(request, "name")
 
 		writer.Write([]byte(bookName))

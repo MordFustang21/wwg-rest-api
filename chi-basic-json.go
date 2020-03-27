@@ -31,11 +31,14 @@ func run() error {
 			Author: "Unknown",
 		}
 
-		writer.Header().Set("Content-Type", "application/json")
-		err := json.NewEncoder(writer).Encode(b)
+		data, err := json.Marshal(b)
 		if err != nil {
-			http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			http.Error(writer, "error writing response", http.StatusInternalServerError)
+			return
 		}
+
+		writer.Header().Set("Content-Type", "application/json")
+		writer.Write(data)
 	})
 	// END OMIT
 

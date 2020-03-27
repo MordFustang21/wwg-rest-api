@@ -16,6 +16,7 @@ func main() {
 func run() error {
 	// START OMIT
 	http.HandleFunc("/hello", func(writer http.ResponseWriter, request *http.Request) {
+		// if no status code is set 200 is defaulted
 		writer.Write([]byte("world"))
 	})
 	// END OMIT

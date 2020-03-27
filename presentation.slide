@@ -12,8 +12,8 @@ design patterns
 - What is HTTP
 - Basic HTTP server
 - More advanced routing
-- Websockets
 - Testing
+- REST
 
 * What is HTTP
 Hypertext Transfer Protocol (HTTP) is an application-layer protocol for transmitting hypermedia documents, such as HTML. It was designed for communication between web browsers and web servers, but it can also be used for other purposes.
@@ -24,12 +24,17 @@ Here is an example of an HTTP message
 
 * A basic HTTP Server
 Here is an example of a basic http server that does nothing.
-.code http-basic.go
+.code http-basic.go /START OMIT/,/END OMIT/
 
 * Lets add some basic routing
-Here we register a handler function by passing a path and anonymous function to call
+
+    type HandlerFunc func(ResponseWriter, *Request)
+    func HandleFunc(pattern string, handler http.HandleFunc)
+    
+Here we register a handler function by passing a path an anonymous function to call
 when a request is made to the path.
-.code http-basic-with-handler.go /START OMIT/,/END OMIT/
+    
+.play http-basic-with-handler.go /START OMIT/,/END OMIT/
 
 This works by registering an handler on the default ServeMux in the http package.
 
@@ -62,7 +67,7 @@ It is also up to them to determine how route registration is handled.
 
 * Implementing Chi
 Here is an example of implementing *github.com/go-chi/chi* which is a light weight
-performant router used by companies like cloudflare and heroku.
+performant router used by companies like Cloudflare, Heroku and Nozzle.
 .code http-custom-router.go /START OMIT/,/END OMIT/
 
 Now we have various route registration methods like
@@ -74,7 +79,26 @@ As well opening up features like middleware and more advanced route features.
 * Middleware
 Middleware is a function that has access to the request and response as well as a control flow callback.
 .code chi-middleware.go /START OMIT/,/END OMIT/    
-Here is an example middleware that forces all requests to be authenticated. 
+Here is an example middleware that forces all requests to be authenticated.
+
+*  Route Specific Auth
+
+    func AuthHandler(handler http.HandlerFunc) http.HandlerFunc {
+    	return func(writer http.ResponseWriter, request *http.Request) {
+    		// pull the authorization header and verify a value has been given
+    		authValue := request.Header.Get("Authorization")
+    		if authValue == "" {
+    			http.Error(writer, "authorization required", http.StatusUnauthorized)
+    			return
+    		}
+    		
+    		handler(writer, request)
+    	}
+    }
+    
+    http.HandleFunc("/admin", AuthHandler(func(writer http.ResponseWriter, request *http.Request) {
+    		// only gets run if authenticated	
+    }))
     
 * Advanced Routes
 An example of route parameters.
@@ -89,17 +113,29 @@ Say we wanted to return more data about the book in JSON format how would we do 
 Here we write back a JSON response containing a book title and author.
 .code chi-basic-json.go /START OMIT/,/END OMIT/
 
+* Testing an HTTP service
+- httptest.Server
+- httptest.ResponseRecorder
+
+* ResponseRecorder Method
+.code http_test.go /RECORDER OMIT/,/RECORDER OMIT/
+
+* TestServer Method
+.code http_test.go /SERVER OMIT/,/SERVER OMIT/ 
+
 * REST What is it?
 REST is an architectural style, or design pattern, for APIs.
 
-There are 6 parts to REST APIs
+Introduced by Roy Fielding in 2000 in his dissertation Architectural Styles and the Designs of Network Based Architectures
 
-- Client-Server (ex. frontend-backend)
-- Stateless (each request must have all the information can't rely on server state)
-- Cacheable (the response says if something is cacheable or not)
-- Uniform Interface (resources, and resource methods)
-- Layered System (limit resource view to the immediate layer)
-- Code on demand (optional. client can download new functionality in the form of scripts)
+A key component is the concept or resources and resource methods.
+
+    POST /books - create book
+    GET /books - list books
+    GET /books/{id} - get book
+    PUT /books/{id{ - update book
+    DELETE /books/{id} - delete book
+    PATCH /books/{id} - partially update a book
 
 * Richardson Maturity Model
 
@@ -108,6 +144,11 @@ There are 6 parts to REST APIs
 A way of determining how RESTful your webservice is.
 
 There are 4 levels 0-3
+
+- 0 - The swamp of POX (plain old XML)
+- 1 - Resource based address/URI
+- 2 - Utilize potential of HTTP
+- 3 - User hypermedia or HATEOAS
 
 * 0 - The Swamp Of POX
 APIs at this level are not at all RESTful and this is where SOAP based services take place.
@@ -165,6 +206,26 @@ Here is a ~/search/commits example
             "type": "User",
             "site_admin": false
           },
+
+* Sentry.io Bad Example
+.link https://docs.sentry.io/api/projects/get-project-details/
+
+    GET /api/0/projects/{organization_slug}/{project_slug}/ - Retrieve project
+    PUT /api/0/projects/{organization_slug}/{project_slug}/ - Update project
+    DELETE /api/0/projects/{organization_slug}/{project_slug}/ - Delete project
+    
+Create Project
+
+    POST /api/0/projects/{organization_slug}/ - Create project?
+    
+Nope 
+
+    405 Method Not Allowed
+
+It's under a team
+
+    POST /api/0/teams/{organization_slug}/{team_slug}/projects/
+
 
 * Resources to further explore
 Richardson Maturity Model
